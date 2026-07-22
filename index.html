@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Six Second Scribble</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#101820">
+<meta name="description" content="A party drawing game. 60 seconds, 10 things, no words.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Scribble">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#101820;
+  --paper:#FBF6EA;
+  --pink:#FF4B7D;
+  --blue:#2A5BD7;
+  --yellow:#FFC53D;
+  --graphite:#1B1B1B;
+  --tier:var(--blue);
+  --display:'Archivo Black','Haettenschweiler','Arial Black',system-ui,sans-serif;
+  --body:'Space Grotesk','Trebuchet MS',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--ink);
+  background-image:radial-gradient(rgba(251,246,234,.07) 1px,transparent 1px);
+  background-size:5px 5px;
+  color:var(--paper);
+  font-family:var(--body);
+  -webkit-font-smoothing:antialiased;
+  -webkit-text-size-adjust:100%;
+  overscroll-behavior-y:contain;
+  padding:calc(18px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+          calc(40px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+}
+.stage{max-width:860px;margin:0 auto}
+
+/* ---------- masthead ---------- */
+.masthead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap}
+.wordmark{font-family:var(--display);line-height:.82;letter-spacing:-.02em}
+.wordmark span{display:block}
+.wordmark .l1{font-size:clamp(22px,5vw,32px);color:var(--paper)}
+.wordmark .l2{font-size:clamp(34px,9vw,58px);color:var(--pink);text-shadow:3px 3px 0 var(--blue)}
+.tagline{font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.6;padding-bottom:6px}
+
+/* ---------- screens ---------- */
+.screen{display:none}
+.screen.is-active{display:block;animation:rise .25s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---------- paper card ---------- */
+.paper{
+  background:var(--paper);
+  color:var(--graphite);
+  border:3px solid var(--graphite);
+  box-shadow:9px 9px 0 var(--tier);
+  padding:22px;
+  position:relative;
+}
+.paper::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:radial-gradient(rgba(27,27,27,.16) .6px,transparent .6px);
+  background-size:4px 4px;opacity:.5;
+}
+
+/* ---------- setup ---------- */
+.eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;font-weight:700;opacity:.55;margin-bottom:12px}
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:26px}
+@media(max-width:620px){.tiers{grid-template-columns:1fr}}
+.tier-btn{
+  font-family:var(--display);font-size:clamp(18px,4vw,26px);
+  background:var(--paper);color:var(--graphite);
+  border:3px solid var(--graphite);padding:18px 14px 14px;
+  text-align:left;cursor:pointer;transition:transform .12s,box-shadow .12s;
+  box-shadow:6px 6px 0 rgba(251,246,234,.25);
+}
+.tier-btn small{display:block;font-family:var(--body);font-size:12px;font-weight:500;
+  letter-spacing:.03em;margin-top:8px;opacity:.7;line-height:1.35}
+@media(hover:hover){.tier-btn:hover{transform:translate(-3px,-3px)}}
+.tier-btn:focus-visible{transform:translate(-3px,-3px);outline:3px solid var(--yellow);outline-offset:3px}
+.tier-btn{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.tier-btn[data-tier="easy"].is-on{box-shadow:6px 6px 0 var(--blue);background:var(--blue);color:var(--paper)}
+.tier-btn[data-tier="medium"].is-on{box-shadow:6px 6px 0 var(--yellow);background:var(--yellow)}
+.tier-btn[data-tier="hard"].is-on{box-shadow:6px 6px 0 var(--pink);background:var(--pink);color:var(--paper)}
+
+.settings{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-end;margin-bottom:26px}
+.field label{display:block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.55;margin-bottom:8px}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-family:var(--body);font-weight:700;font-size:14px;background:transparent;color:var(--paper);
+  border:2px solid rgba(251,246,234,.35);padding:9px 14px;cursor:pointer}
+.chip.is-on{background:var(--paper);color:var(--ink);border-color:var(--paper)}
+
+.rules{font-size:14px;line-height:1.6;opacity:.72;max-width:56ch;margin-bottom:26px}
+.rules b{color:var(--yellow);font-weight:700}
+.install{margin-top:16px;font-size:13px;line-height:1.6;opacity:.6;max-width:44ch}
+.install b{color:var(--yellow);font-weight:700}
+#installbtn{margin-top:16px}
+
+/* ---------- buttons ---------- */
+.btn{
+  font-family:var(--display);font-size:17px;letter-spacing:.01em;
+  background:var(--pink);color:var(--paper);border:3px solid var(--graphite);
+  padding:15px 26px;cursor:pointer;box-shadow:5px 5px 0 var(--graphite);
+  transition:transform .1s,box-shadow .1s;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+@media(hover:hover){.btn:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--graphite)}}
+.btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--graphite)}
+.btn:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
+.btn.ghost{background:transparent;color:var(--paper);border-color:var(--paper);box-shadow:5px 5px 0 rgba(251,246,234,.3)}
+.btn.small{font-size:13px;padding:11px 16px}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* ---------- play ---------- */
+.cardhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.headleft{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.badge{font-family:var(--display);font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--tier);color:var(--paper);padding:6px 11px;border:2px solid var(--graphite)}
+.badge.mid{color:var(--graphite)}
+.cat{font-family:var(--display);font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+  background:var(--paper);color:var(--graphite);padding:6px 11px;border:2px solid var(--graphite)}
+.counter{font-size:12px;letter-spacing:.16em;text-transform:uppercase;opacity:.55}
+
+.clockwrap{margin-bottom:6px}
+.clockface{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:8px}
+.clock{font-family:var(--display);font-size:clamp(44px,13vw,86px);line-height:.9;letter-spacing:-.03em;color:var(--graphite)}
+.tally{font-family:var(--display);font-size:clamp(18px,4vw,26px);color:var(--tier)}
+.track{height:16px;background:rgba(27,27,27,.12);border:3px solid var(--graphite);position:relative;overflow:hidden}
+.ink{position:absolute;inset:0;transform-origin:left center;background:var(--tier);transition:transform .1s linear}
+.is-panic .ink{background:var(--pink)}
+.is-panic .clock{color:var(--pink);animation:jolt .5s steps(2,end) infinite}
+@keyframes jolt{0%,100%{transform:none}50%{transform:translateX(-2px) rotate(-.6deg)}}
+
+.items{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:0 22px;margin-top:20px}
+@media(max-width:620px){.items{grid-template-columns:1fr}}
+.item{border-bottom:2px dotted rgba(27,27,27,.28)}
+.item button{
+  width:100%;display:flex;align-items:center;gap:12px;text-align:left;
+  background:none;border:0;cursor:pointer;padding:13px 4px;
+  font-family:var(--body);font-size:clamp(16px,2.4vw,19px);font-weight:500;color:var(--graphite);
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;
+}
+.item button:focus-visible{outline:3px solid var(--pink);outline-offset:-3px}
+.num{font-family:var(--display);font-size:13px;width:26px;flex:none;color:var(--tier);opacity:.85}
+.item .label{position:relative;display:inline-block}
+.item .label::after{
+  content:"";position:absolute;left:-3px;right:-3px;top:50%;height:9px;margin-top:-4px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 8' preserveAspectRatio='none'%3E%3Cpath d='M0 4.4 C 12 1.6, 22 6.8, 34 4 S 56 1.4, 68 5.2 S 88 2.2, 100 4' stroke='%23FF4B7D' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-size:100% 100%;background-repeat:no-repeat;
+  transform:scaleX(0);transform-origin:left center;transition:transform .22s ease-out;
+}
+.item.done .label::after{transform:scaleX(1)}
+.item.done button{opacity:.5}
+
+.cover{position:absolute;inset:0;background:var(--paper);z-index:3;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:28px;gap:12px}
+.cover .catbig{font-family:var(--display);font-size:clamp(24px,6vw,40px);color:var(--graphite);line-height:1;letter-spacing:-.01em}
+.cover .catlabel{font-size:11px;letter-spacing:.2em;text-transform:uppercase;opacity:.5;color:var(--graphite)}
+.cover p{font-size:14px;opacity:.65;max-width:36ch;line-height:1.5;color:var(--graphite)}
+.hidden{display:none!important}
+.playfoot{margin-top:18px}
+
+/* ---------- result ---------- */
+.score{font-family:var(--display);font-size:clamp(56px,17vw,120px);line-height:.85;color:var(--graphite);letter-spacing:-.04em}
+.score sub{font-size:.3em;vertical-align:baseline;opacity:.4}
+.missed{margin-top:16px;font-size:14px;line-height:1.7;color:var(--graphite)}
+.missed strong{display:block;font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.5;margin-bottom:4px}
+.log{margin-top:24px;font-size:13px;opacity:.65;line-height:1.7}
+
+/* ---------- phones ---------- */
+@media(max-width:620px){
+  body{padding:calc(12px + env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom))}
+  .masthead{margin-bottom:14px;gap:4px}
+  .tagline{display:none}
+  /* during a round the title shrinks out of the way */
+  body.playing .masthead{margin-bottom:8px}
+  body.playing .wordmark .l1{display:none}
+  body.playing .wordmark .l2{font-size:24px;text-shadow:2px 2px 0 var(--blue)}
+
+  .paper{padding:14px;box-shadow:6px 6px 0 var(--tier)}
+  .cardhead{margin-bottom:10px;gap:8px}
+  .badge,.cat{font-size:11px;padding:5px 9px}
+  .counter{font-size:10px}
+
+  /* the clock stays pinned while the list scrolls */
+  .clockwrap{position:sticky;top:0;z-index:2;background:var(--paper);
+    margin:-14px -14px 0;padding:12px 14px 8px}
+  .clock{font-size:42px}
+  .tally{font-size:19px}
+  .track{height:12px;border-width:2px}
+
+  .items{margin-top:8px}
+  .item button{padding:12px 2px;min-height:48px;font-size:16px;gap:10px}
+  .num{width:22px;font-size:12px}
+
+  .playfoot{position:sticky;bottom:0;z-index:4;background:var(--ink);
+    margin-top:10px;padding:10px 0 calc(4px + env(safe-area-inset-bottom));gap:8px}
+  .playfoot .btn{flex:1;padding:13px 4px;font-size:12px;box-shadow:3px 3px 0 rgba(251,246,234,.3)}
+
+  .cover{padding:18px 16px}
+  .settings{gap:16px;margin-bottom:20px}
+  .rules{font-size:13px;margin-bottom:20px}
+  #setup .btn,#result .btn:not(.small){width:100%}
+  #result .btnrow .btn.small{flex:1;padding:13px 4px;font-size:12px}
+  .score{font-size:88px}
+}
+/* phone held sideways: keep the clock and list side by side */
+@media(max-height:520px) and (orientation:landscape){
+  .masthead,.rules{display:none}
+  .clock{font-size:34px}
+  .items{grid-template-columns:1fr 1fr}
+  .item button{padding:8px 2px;min-height:38px;font-size:14px}
+}
+
+/* ---------- print ---------- */
+#printsheet{display:none}
+@media print{
+  body{background:#fff;color:#000;padding:0}
+  .stage{display:none}
+  #printsheet{display:block}
+  .pcard{border:1px solid #000;padding:10px 12px;margin:0 0 8px;break-inside:avoid;font-size:11px}
+  .pcard h3{font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+  .pgrid{column-count:2;column-gap:14px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <header class="masthead">
+    <div class="wordmark">
+      <span class="l1">Six Second</span>
+      <span class="l2">SCRIBBLE</span>
+    </div>
+    <div class="tagline">60 seconds &middot; 10 things &middot; no words</div>
+  </header>
+
+  <!-- ============ SETUP ============ -->
+  <section id="setup" class="screen is-active">
+    <p class="eyebrow">Pick a deck</p>
+    <div class="tiers">
+      <button class="tier-btn is-on" data-tier="easy">Easy
+        <small>Things a five-year-old could draw. Sun, cat, ladder.</small></button>
+      <button class="tier-btn" data-tier="medium">Medium
+        <small>Needs a bit of detail. Lighthouse, octopus, vending machine.</small></button>
+      <button class="tier-btn" data-tier="hard">Hard
+        <small>Awkward specifics. Anglerfish, farrier, penny farthing.</small></button>
+    </div>
+
+    <div class="settings">
+      <div class="field">
+        <label for="len-30">Round length</label>
+        <div class="chiprow" id="lens">
+          <button class="chip" id="len-30" data-len="30">30s</button>
+          <button class="chip" data-len="45">45s</button>
+          <button class="chip is-on" data-len="60">60s</button>
+          <button class="chip" data-len="90">90s</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="printbtn">Deck</label>
+        <div class="chiprow">
+          <button class="chip" id="printbtn">Print all 100 cards</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="rules">Every card has a <b>category</b> &mdash; say it out loud before you start, so the guessers
+      know roughly where they are. Then one person draws and everyone else shouts.
+      <b>No letters, no numbers, no talking.</b> Tap a line the second someone gets it right.</p>
+
+    <div class="btnrow">
+      <button class="btn" id="startbtn">Deal a random card</button>
+    </div>
+    <button class="chip" id="installbtn" hidden>Install on this phone</button>
+    <p class="install" id="installhint" hidden></p>
+  </section>
+
+  <!-- ============ PLAY ============ -->
+  <section id="play" class="screen">
+    <div class="cardhead">
+      <div class="headleft">
+        <span class="badge" id="tierbadge">Easy</span>
+        <span class="cat" id="catbadge">Around the house</span>
+      </div>
+      <span class="counter" id="counter">Card 1 of 100</span>
+    </div>
+
+    <div class="paper" id="cardpaper">
+      <div class="clockwrap">
+        <div class="clockface">
+          <div class="clock" id="clock">1:00</div>
+          <div class="tally" id="tally">0 / 10</div>
+        </div>
+        <div class="track"><div class="ink" id="ink"></div></div>
+      </div>
+
+      <ol class="items" id="items"></ol>
+
+      <div class="cover" id="cover">
+        <div class="catlabel">Tonight&rsquo;s category is</div>
+        <div class="catbig" id="catbig">Around the house</div>
+        <p>Read that out to the room, then tap when everyone&rsquo;s ready. The clock starts immediately.</p>
+        <button class="btn" id="gobtn">Start drawing</button>
+      </div>
+    </div>
+
+    <div class="btnrow playfoot">
+      <button class="btn small ghost" id="pausebtn">Pause</button>
+      <button class="btn small ghost" id="stopbtn">End round</button>
+      <button class="btn small ghost" id="quitbtn">Back to decks</button>
+    </div>
+  </section>
+
+  <!-- ============ RESULT ============ -->
+  <section id="result" class="screen">
+    <div class="cardhead">
+      <div class="headleft">
+        <span class="badge" id="tierbadge2">Easy</span>
+        <span class="cat" id="catbadge2">Around the house</span>
+      </div>
+      <span class="counter" id="counter2">Card 1 of 100</span>
+    </div>
+    <div class="paper">
+      <p class="eyebrow">Time&rsquo;s up</p>
+      <div class="score" id="finalscore">0<sub>/10</sub></div>
+      <div class="missed" id="missed"></div>
+    </div>
+    <div class="btnrow playfoot">
+      <button class="btn" id="nextbtn">Next card</button>
+      <button class="btn small ghost" id="againbtn">Replay this card</button>
+      <button class="btn small ghost" id="donebtn">Back to decks</button>
+    </div>
+    <div class="log" id="log"></div>
+  </section>
+</div>
+
+<div id="printsheet"></div>
+
+<script>
+/* ============================================================
+   THEMED WORD SETS
+   Each card takes its ten items from one theme, so the category
+   is a fair clue. Items recur across cards within a theme,
+   never twice on the same card.
+   ============================================================ */
+const THEMES={
+easy:[
+{name:"Around the house",items:["Door","Window","Chimney","Chair","Table","Bed","Lamp","Candle","Clock","Cup","Mug","Teapot","Spoon","Fork","Knife","Plate","Bowl","Bottle","Key","Padlock","Broom","Bucket","Bin","Box","Light bulb","Plug","Television","Radio","Toothbrush","Mirror","Kettle","Cushion"]},
+{name:"Food and drink",items:["Apple","Banana","Carrot","Egg","Cake","Ice cream","Pizza slice","Bread","Sandwich","Burger","Hot dog","Chips","Doughnut","Biscuit","Lollipop","Cheese","Sausage","Fried egg","Milk bottle","Mushroom","Pumpkin","Grapes","Strawberry","Cherry","Lemon","Orange","Pear","Watermelon","Pineapple","Coconut","Corn on the cob","Teabag"]},
+{name:"Animals",items:["Cat","Dog","Fish","Bird","Duck","Chicken","Cow","Pig","Sheep","Horse","Mouse","Rabbit","Frog","Snake","Spider","Bee","Butterfly","Ant","Snail","Worm","Turtle","Elephant","Lion","Monkey","Bear","Whale","Owl","Fox","Deer","Goat","Bird's nest","Kennel"]},
+{name:"Getting around",items:["Car","Bus","Train","Boat","Aeroplane","Bicycle","Scooter","Rocket","Tractor","Helicopter","Wheel","Road","Bridge","Signpost","Map","Compass","Anchor","Sail","Suitcase","Ticket","Bus stop","Petrol pump","Steering wheel","Skateboard","Lorry","Taxi","Canoe","Level crossing"]},
+{name:"Weather and nature",items:["Sun","Moon","Star","Cloud","Rainbow","Snowman","Tree","Flower","Leaf","Mountain","Island","Beach","Wave","River","Fire","Snowflake","Lightning bolt","Rain","Puddle","Acorn","Grass","Rock","Log","Pine tree","Seashell","Feather","Pebble","Bush"]},
+{name:"What you wear",items:["Hat","Cap","Crown","Glasses","Sunglasses","Shirt","Trousers","Sock","Shoe","Boot","Glove","Scarf","Tie","Belt","Button","Zip","Bag","Wallet","Coin","Ring","Necklace","Watch","Dress","Skirt","Coat","Bow tie","Earring","Slipper"]},
+{name:"Toys, games and music",items:["Ball","Kite","Balloon","Drum","Guitar","Trumpet","Bell","Whistle","Dice","Teddy bear","Yo-yo","Puzzle piece","Playing card","Skipping rope","Football","Swing","Slide","Sandpit","Bubble","Spinning top","Marble","Keyboard","Triangle","Recorder","Hopscotch","Paper aeroplane"]},
+{name:"Tools and the shed",items:["Hammer","Saw","Nail","Screw","Spanner","Screwdriver","Paint tin","Paintbrush","Bucket","Ladder","Wheelbarrow","Watering can","Spade","Rake","Plant pot","Fence","Gate","Brick wall","Tape measure","Torch","Rope","Chain","Toolbox","Drill","Pliers","Nut and bolt"]},
+{name:"Spooky and make-believe",items:["Ghost","Skull","Sword","Shield","Castle","King","Queen","Robot","Alien","Flying saucer","Monster","Dinosaur","Dragon","Scarecrow","Witch's hat","Pumpkin lantern","Magic wand","Cauldron","Wizard","Fairy","Magic carpet","Treasure chest","Pirate flag","Bat","Spider web","Tombstone"]},
+{name:"Faces and symbols",items:["Eye","Hand","Foot","Ear","Nose","Tooth","Moustache","Beard","Heart","Smiley face","Arrow","Question mark","Exclamation mark","Cross","Tick","Star","Footprint","Thumbs up","Skeleton","Brain","Lips","Eyebrow","Wink","Tongue","Speech bubble","Fingerprint"]}
+],
+medium:[
+{name:"Animals of the world",items:["Penguin","Flamingo","Giraffe","Zebra","Hippo","Rhino","Crocodile","Camel","Koala","Sloth","Hedgehog","Squirrel","Owl","Peacock","Parrot","Kangaroo","Bat","Chameleon","Tortoise","Scorpion","Ostrich","Panda","Wolf","Gorilla","Racoon","Skunk","Llama","Toad"]},
+{name:"Under the sea",items:["Octopus","Jellyfish","Seahorse","Starfish","Crab","Lobster","Shark","Dolphin","Seal","Whale","Coral","Shipwreck","Submarine","Scuba diver","Anchor","Oyster","Sea turtle","Squid","Message in a bottle","Lighthouse","Buoy","Fishing net","Snorkel","Treasure chest","Pearl","Rockpool"]},
+{name:"Jobs and characters",items:["Firefighter","Chef","Nurse","Police officer","Astronaut","Clown","Wizard","Knight in armour","Cowboy","Ninja","Mermaid","Vampire","Mummy","Witch","Superhero","Lifeguard","Postman","Farmer","Builder","Pirate","Judge","Soldier","Scientist","Artist","Waiter","Magician"]},
+{name:"Machines and vehicles",items:["Forklift","Digger","Crane","Bulldozer","Ambulance","Fire engine","Police car","Taxi","Ice cream van","Food truck","Caravan","Tank","Motorbike","Sidecar","Unicycle","Tandem bicycle","Hovercraft","Ferry","Canal boat","Gondola","Cable car","Tram","Lawnmower","Drone","Hot air balloon","Cement mixer","Tow truck","Go-kart"]},
+{name:"Fairground and park",items:["Ferris wheel","Roller coaster","Carousel","Playground slide","Swing","Seesaw","Trampoline","Bumper car","Helter skelter","Candy floss","Coconut shy","Hall of mirrors","Ghost train","Ticket booth","Popcorn","Balloon animal","Duck pond","Bandstand","Park bench","Fountain","Picnic blanket","Dog walker","Sandpit","Skate ramp","Toffee apple","Prize goldfish"]},
+{name:"Landscapes and places",items:["Waterfall","Cave","Desert island","Jungle","Iceberg","Swamp","Canyon","Cliff","Pier","Volcano","Windmill","Lighthouse","Rope bridge","Harbour","Forest","Beach hut","Stepping stones","Hedge maze","Vineyard","Oasis","Glacier","Sand dune","Hot spring","Terraced field","Salt flat","Fjord"]},
+{name:"Sport and games",items:["Surfboard","Canoe","Jet ski","Snowboard","Ice skates","Roller skates","Bowling pins","Dartboard","Bow and arrow","Basketball hoop","Goalposts","Tennis racket","Golf club","Boxing glove","Medal","Trophy","Podium","Skateboard","Cricket bat","Referee's whistle","Stopwatch","Finish line","Table tennis bat","Chess knight","Snooker table","Swimming goggles"]},
+{name:"Music and sound",items:["Violin","Saxophone","Accordion","Harp","Xylophone","Tambourine","Microphone","Headphones","Record player","Disco ball","Grand piano","Trombone","Banjo","Drum kit","Music stand","Amplifier","Maracas","Triangle","Cello","Flute","Speaker","Metronome","Conductor's baton","Bugle","Harmonica","Music box"]},
+{name:"Around town",items:["Skyscraper","Water tower","Bus stop","Phone box","Post box","Cash machine","Fire hydrant","Street lamp","Satellite dish","Wind turbine","Solar panel","Traffic light","Zebra crossing","Roadworks sign","Bike rack","Vending machine","Shop awning","Market stall","Fountain","Statue","Clock tower","Manhole cover","Roundabout","Bunting","Scaffolding","Multi-storey car park"]},
+{name:"Gadgets and gizmos",items:["Toaster","Sewing machine","Microscope","Telescope","Binoculars","Walkie talkie","Metal detector","Horseshoe magnet","Kitchen scales","Thermometer","Stethoscope","Syringe","Hourglass","Fire extinguisher","Wheelchair","Crutches","Shopping trolley","Piggy bank","Snow globe","Wind chime","Cuckoo clock","Rolling pin","Hamster wheel","Jack in the box","Egg timer","Cafetiere"]}
+],
+hard:[
+{name:"Unusual sea creatures",items:["Anglerfish","Pufferfish","Swordfish","Hammerhead shark","Manta ray","Narwhal","Eel","Catfish","Piranha","Sturgeon","Flying fish","Clownfish","Basking shark","Sea urchin","Barnacle","Walrus","Orca","Manatee","Cuttlefish","Sea cucumber","Horseshoe crab","Sawfish","Moray eel","Leafy sea dragon","Nautilus","Sea anemone"]},
+{name:"Obscure animals",items:["Axolotl","Platypus","Armadillo","Pangolin","Meerkat","Lemur","Tapir","Okapi","Wombat","Capybara","Aardvark","Wildebeest","Alpaca","Chinchilla","Ibex","Yak","Bison","Moose","Lynx","Hyena","Porcupine","Anteater","Mole","Weasel","Badger","Otter","Quokka","Fennec fox"]},
+{name:"Birds and creepy-crawlies",items:["Emu","Kiwi bird","Pelican","Toucan","Woodpecker","Kingfisher","Heron","Puffin","Hummingbird","Vulture","Condor","Albatross","Praying mantis","Stick insect","Tarantula","Centipede","Cicada","Dung beetle","Firefly","Cormorant","Osprey","Locust","Hornet","Weaver bird","Peregrine falcon","Earwig"]},
+{name:"Trades and crafts",items:["Blacksmith","Glassblower","Locksmith","Chimney sweep","Cobbler","Watchmaker","Stonemason","Thatcher","Farrier","Bricklayer","Plumber","Electrician","Potter","Weaver","Sculptor","Lumberjack","Shepherd","Beekeeper","Butcher","Baker","Fishmonger","Barista","Sommelier","Upholsterer","Barrel maker","Bookbinder"]},
+{name:"Jobs and professions",items:["Air traffic controller","Lighthouse keeper","Stunt double","Mime artist","Tattoo artist","Auctioneer","Window cleaner","Tour guide","Paramedic","Dentist","Optician","Physiotherapist","Vet","Marine biologist","Archaeologist","Palaeontologist","Meteorologist","Cartographer","Librarian","Translator","Flight attendant","Train driver","Crane operator","Deep sea diver","Ski instructor","Falconer","Gamekeeper","Coastguard"]},
+{name:"Circus and spectacle",items:["Orchestra conductor","Puppeteer","Ventriloquist","Tightrope walker","Lion tamer","Sumo wrestler","Matador","Morris dancer","Bagpiper","Trapeze artist","Fire eater","Sword swallower","Human cannonball","Ringmaster","Contortionist","Unicyclist","Juggler on stilts","Escapologist","Plate spinner","Knife thrower","Clown car","Strongman","Snake charmer","Pantomime horse"]},
+{name:"Instruments of measurement",items:["Sextant","Astrolabe","Sundial","Weather vane","Barometer","Gyroscope","Pendulum","Kaleidoscope","Periscope","Abacus","Bunsen burner","Pipette","Centrifuge","Balance scales","Theodolite","Seismograph","Orrery","Compass rose","Slide rule","Tuning fork","Rain gauge","Anemometer","Spirit level","Metronome"]},
+{name:"Old machines and household",items:["Gramophone","Typewriter","Grandfather clock","Four poster bed","Hot water bottle","Corkscrew","Nutcracker","Butter churn","Spinning wheel","Weaving loom","Anvil","Bellows","Cauldron","Mangle","Chamber pot","Oil lamp","Rocking chair","Wash board","Bed warming pan","Coal scuttle","Meat grinder","Candle snuffer","Pocket watch","Inkwell and quill","Fire poker","Boot scraper"]},
+{name:"Castles and history",items:["Trebuchet","Guillotine","Portcullis","Drawbridge","Aqueduct","Obelisk","Sarcophagus","Totem pole","Gargoyle","Stained glass window","Spiral staircase","Suit of armour","Crossbow","Blunderbuss","Battering ram","Moat","Arrow slit","Siege tower","Catapult","Chainmail","Jousting lance","Watchtower","Coat of arms","Sundial"]},
+{name:"Odd vehicles",items:["Zeppelin","Biplane","Glider","Seaplane","Penny farthing","Steam locomotive","Funicular railway","Icebreaker","Tugboat","Catamaran","Trawler","Snowplough","Combine harvester","Cherry picker","Street sweeper","Gritter","Hearse","Rickshaw","Dog sled","Chariot","Monorail","Hydrofoil","Milk float","Amphibious car","Ice resurfacer","Paddle steamer"]},
+{name:"Strange plants and produce",items:["Dragon fruit","Star fruit","Artichoke","Asparagus","Pomegranate","Okra","Rhubarb","Venus flytrap","Bonsai tree","Weeping willow","Pitcher plant","Baobab tree","Kohlrabi","Romanesco","Passion fruit","Lychee","Fig","Aloe vera","Bamboo","Mistletoe","Truffle","Prickly pear","Rambutan","Horseradish"]},
+{name:"Sports and traditions",items:["Curling stone","Javelin","Pole vault","Hurdle","Fencing mask","Lacrosse stick","Shuttlecock","Luge","Caber toss","Cheese rolling","Bog snorkelling","Ski jump","Bobsleigh","Sumo ring","Polo mallet","Croquet hoop","Discus","Hammer throw","Steeplechase water jump","Velodrome","Archery target","Tug of war","Maypole","Pancake race"]}
+]
+};
+
+const TIER_LABEL={easy:"Easy",medium:"Medium",hard:"Hard"};
+const TIER_SEED={easy:20260722,medium:81423907,hard:55190364};
+const CARDS_PER_DECK=100, ITEMS_PER_CARD=10;
+
+/* ---------- seeded deck building (identical decks every time) ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function shuffled(arr,rnd){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function buildDeck(themes,seed){
+  const rnd=mulberry32(seed),deck=[],bags=themes.map(()=>[]);
+  for(let c=0;c<CARDS_PER_DECK;c++){
+    const t=c%themes.length,theme=themes[t],items=[];let guard=0;
+    while(items.length<ITEMS_PER_CARD&&guard++<5000){
+      if(!bags[t].length)bags[t]=shuffled(theme.items,rnd);
+      const item=bags[t].pop();
+      if(items.indexOf(item)>-1){bags[t].unshift(item);continue;}
+      items.push(item);
+    }
+    deck.push({category:theme.name,items:items});
+  }
+  return deck;
+}
+const DECKS={easy:buildDeck(THEMES.easy,TIER_SEED.easy),
+             medium:buildDeck(THEMES.medium,TIER_SEED.medium),
+             hard:buildDeck(THEMES.hard,TIER_SEED.hard)};
+
+/* ---------- state ---------- */
+const S={tier:"easy",len:60,index:0,left:60,running:false,started:false,
+         done:new Set(),card:null,ticker:null,endAt:0,history:[],queue:[]};
+
+const $=id=>document.getElementById(id);
+const screens={setup:$("setup"),play:$("play"),result:$("result")};
+function show(n){
+  for(const k in screens)screens[k].classList.toggle("is-active",k===n);
+  document.body.classList.toggle("playing",n==="play");
+  window.scrollTo(0,0);
+}
+function buzz(pattern){try{if(navigator.vibrate)navigator.vibrate(pattern);}catch(e){}}
+function tierColour(t){return t==="easy"?"var(--blue)":t==="medium"?"var(--yellow)":"var(--pink)";}
+
+/* Fresh shuffled running order per tier per session: the opening card is
+   random every time, and no card repeats until all 100 have been seen. */
+function reshuffleQueue(){
+  const order=[];for(let i=0;i<CARDS_PER_DECK;i++)order.push(i);
+  for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+  S.queue=order;
+}
+function drawNextIndex(){
+  if(!S.queue.length)reshuffleQueue();
+  return S.queue.pop();
+}
+
+function paintHead(){
+  document.documentElement.style.setProperty("--tier",tierColour(S.tier));
+  [$("tierbadge"),$("tierbadge2")].forEach(b=>{b.textContent=TIER_LABEL[S.tier];b.classList.toggle("mid",S.tier==="medium");});
+  const cat=S.card?S.card.category:"";
+  $("catbadge").textContent=cat;$("catbadge2").textContent=cat;$("catbig").textContent=cat;
+  const label="Card "+(S.index+1)+" of "+CARDS_PER_DECK;
+  $("counter").textContent=label;$("counter2").textContent=label;
+}
+function fmt(s){const m=Math.floor(s/60),r=Math.floor(s%60);return m+":"+String(r).padStart(2,"0");}
+
+/* ---------- setup interactions ---------- */
+document.querySelectorAll(".tier-btn").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".tier-btn").forEach(x=>x.classList.remove("is-on"));
+  b.classList.add("is-on");S.tier=b.dataset.tier;reshuffleQueue();
+}));
+document.querySelectorAll("#lens .chip").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#lens .chip").forEach(x=>x.classList.remove("is-on"));
+  b.classList.add("is-on");S.len=+b.dataset.len;
+}));
+$("startbtn").addEventListener("click",()=>{reshuffleQueue();deal(drawNextIndex());});
+$("printbtn").addEventListener("click",printDeck);
+
+/* ---------- dealing & rendering ---------- */
+function deal(index){
+  if(typeof index==="number")S.index=index;
+  S.card=DECKS[S.tier][S.index];
+  S.done=new Set();S.left=S.len;S.running=false;S.started=false;
+  paintHead();renderItems();updateClock();
+  $("cover").classList.remove("hidden");
+  $("cardpaper").classList.remove("is-panic");
+  $("pausebtn").textContent="Pause";
+  show("play");
+}
+function renderItems(){
+  const ol=$("items");ol.innerHTML="";
+  S.card.items.forEach((word,i)=>{
+    const li=document.createElement("li");li.className="item";
+    const btn=document.createElement("button");btn.type="button";
+    btn.innerHTML='<span class="num">'+String(i+1).padStart(2,"0")+'</span><span class="label"></span>';
+    btn.querySelector(".label").textContent=word;
+    btn.addEventListener("click",()=>toggle(i,li));
+    li.appendChild(btn);ol.appendChild(li);
+  });
+  updateTally();
+}
+function toggle(i,li){
+  if(!S.started)return;
+  if(S.done.has(i)){S.done.delete(i);li.classList.remove("done");}
+  else{S.done.add(i);li.classList.add("done");buzz(18);}
+  updateTally();
+  if(S.done.size===ITEMS_PER_CARD)finish();
+}
+function updateTally(){$("tally").textContent=S.done.size+" / "+ITEMS_PER_CARD;}
+function updateClock(){
+  $("clock").textContent=fmt(Math.max(0,S.left));
+  $("ink").style.transform="scaleX("+Math.max(0,S.left/S.len)+")";
+  $("cardpaper").classList.toggle("is-panic",S.left<=10&&S.started&&S.left>0);
+}
+
+/* ---------- clock ---------- */
+$("gobtn").addEventListener("click",()=>{$("cover").classList.add("hidden");S.started=true;startClock();});
+/* the drawer isn't touching the phone for 60 seconds, so hold the screen on */
+let wakeLock=null;
+async function keepAwake(on){
+  try{
+    if(on&&"wakeLock" in navigator&&!wakeLock){
+      wakeLock=await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release",()=>{wakeLock=null;});
+    }else if(!on&&wakeLock){await wakeLock.release();wakeLock=null;}
+  }catch(e){}
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"&&S.running)keepAwake(true);
+});
+
+function startClock(){
+  S.running=true;S.endAt=Date.now()+S.left*1000;keepAwake(true);
+  clearInterval(S.ticker);
+  S.ticker=setInterval(()=>{
+    S.left=(S.endAt-Date.now())/1000;
+    if(S.left<=0){S.left=0;updateClock();finish();return;}
+    updateClock();
+  },100);
+  $("pausebtn").textContent="Pause";
+}
+function pauseClock(){S.running=false;clearInterval(S.ticker);keepAwake(false);$("pausebtn").textContent="Resume";}
+$("pausebtn").addEventListener("click",()=>{if(!S.started)return;S.running?pauseClock():startClock();});
+$("stopbtn").addEventListener("click",finish);
+$("quitbtn").addEventListener("click",()=>{clearInterval(S.ticker);S.running=false;keepAwake(false);show("setup");});
+
+function finish(){
+  clearInterval(S.ticker);S.running=false;keepAwake(false);
+  $("cardpaper").classList.remove("is-panic");
+  beep();buzz([80,60,80]);
+  const got=S.done.size;
+  $("finalscore").innerHTML=got+'<sub>/10</sub>';
+  const missed=S.card.items.filter((w,i)=>!S.done.has(i));
+  $("missed").innerHTML=missed.length
+    ? '<strong>Never got</strong>'+missed.join(" &middot; ")
+    : '<strong>Clean sweep</strong>Every single one. Nobody beats that.';
+  S.history.unshift({tier:TIER_LABEL[S.tier],cat:S.card.category,got:got});
+  $("log").innerHTML=S.history.slice(0,8).map(h=>h.tier+" &middot; "+h.cat+" &mdash; "+h.got+"/10").join("<br>");
+  paintHead();show("result");
+}
+$("nextbtn").addEventListener("click",()=>deal(drawNextIndex()));
+$("againbtn").addEventListener("click",()=>deal());
+$("donebtn").addEventListener("click",()=>show("setup"));
+
+/* ---------- end-of-round beep ---------- */
+function beep(){
+  try{
+    const Ctx=window.AudioContext||window.webkitAudioContext;if(!Ctx)return;
+    const ctx=new Ctx();
+    [0,0.18,0.36].forEach(t=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type="square";o.frequency.value=520;
+      g.gain.setValueAtTime(0.0001,ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(0.16,ctx.currentTime+t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+t+0.14);
+      o.connect(g);g.connect(ctx.destination);
+      o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.16);
+    });
+    setTimeout(()=>ctx.close(),900);
+  }catch(e){}
+}
+
+/* ---------- keyboard ---------- */
+document.addEventListener("keydown",e=>{
+  if(!screens.play.classList.contains("is-active"))return;
+  if(e.code==="Space"){e.preventDefault();
+    if(!S.started){$("gobtn").click();}else{S.running?pauseClock():startClock();}return;}
+  if(e.key.toLowerCase()==="n"){finish();return;}
+  if(/^[0-9]$/.test(e.key)){
+    const i=e.key==="0"?9:(+e.key-1);
+    const li=$("items").children[i];if(li)toggle(i,li);
+  }
+});
+
+/* ---------- printable deck ---------- */
+function printDeck(){
+  const deck=DECKS[S.tier];
+  $("printsheet").innerHTML='<h2 style="font-size:14px;margin:0 0 10px">Six Second Scribble &mdash; '
+    +TIER_LABEL[S.tier]+' deck</h2><div class="pgrid">'
+    +deck.map((c,i)=>'<div class="pcard"><h3>'+TIER_LABEL[S.tier]+' &middot; Card '+(i+1)
+    +' &middot; '+c.category+'</h3>'+c.items.map((w,n)=>(n+1)+". "+w).join("<br>")+'</div>').join("")+'</div>';
+  window.print();
+}
+
+/* ---------- installing to the home screen ---------- */
+if("serviceWorker" in navigator && location.protocol!=="file:"){
+  window.addEventListener("load",()=>{navigator.serviceWorker.register("./sw.js").catch(()=>{});});
+}
+const standalone=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+let installEvent=null;
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();installEvent=e;
+  if(!standalone)$("installbtn").hidden=false;
+});
+$("installbtn").addEventListener("click",async()=>{
+  if(!installEvent)return;
+  installEvent.prompt();
+  await installEvent.userChoice;
+  installEvent=null;$("installbtn").hidden=true;
+});
+window.addEventListener("appinstalled",()=>{$("installbtn").hidden=true;$("installhint").hidden=true;});
+/* iPhones have no install prompt, so point at the Share menu instead */
+if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!standalone){
+  $("installhint").hidden=false;
+  $("installhint").innerHTML='To keep this on your phone: tap <b>Share</b>, then <b>Add to Home Screen</b>.';
+}
+
+reshuffleQueue();
+paintHead();
+</script>
+</body>
+</html>
